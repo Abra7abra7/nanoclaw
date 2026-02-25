@@ -10,6 +10,8 @@ import makeWASocket, {
   makeCacheableSignalKeyStore,
   useMultiFileAuthState,
 } from '@whiskeysockets/baileys';
+import qrcode from 'qrcode-terminal';
+
 
 import { ASSISTANT_HAS_OWN_NUMBER, ASSISTANT_NAME, STORE_DIR } from '../config.js';
 import {
@@ -66,7 +68,7 @@ export class WhatsAppChannel implements Channel {
         creds: state.creds,
         keys: makeCacheableSignalKeyStore(state.keys, logger),
       },
-      printQRInTerminal: true,
+      printQRInTerminal: false, // Disabling deprecated option explicitly
       logger,
       browser: Browsers.macOS('Chrome'),
     });
@@ -76,6 +78,7 @@ export class WhatsAppChannel implements Channel {
 
       if (qr) {
         logger.info('WhatsApp authentication required. Please scan the QR code in the logs.');
+        qrcode.generate(qr, { small: true });
       }
 
       if (connection === 'close') {
