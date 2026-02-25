@@ -62,21 +62,38 @@ export class WhatsAppChannel implements Channel {
       logger.warn({ err }, 'Failed to fetch latest WA Web version, using default');
       return { version: undefined };
     });
+
+    const pairingNumber = process.env.WA_PAIRING_NUMBER;
+
     this.sock = makeWASocket({
       version,
       auth: {
         creds: state.creds,
         keys: makeCacheableSignalKeyStore(state.keys, logger),
       },
-      printQRInTerminal: false, // Disabling deprecated option explicitly
+      printQRInTerminal: false,
       logger,
-      browser: Browsers.macOS('Chrome'),
+      browser: Browsers.ubuntu('Chrome'),
     });
+
+    if (pairingNumber && !this.sock.authState.creds.registered) {
+      setTimeout(async () => {
+        try {
+          const code = await this.sock.requestPairingCode(pairingNumber);
+          logger.info(`PAIRING CODE: ${code}`);
+          console.log('\n----------------------------------------');
+          console.log(`PÁROVACÍ KÓD PRE WHATSAPP: ${code}`);
+          console.log('----------------------------------------\n');
+        } catch (err) {
+          logger.error({ err }, 'Failed to request pairing code');
+        }
+      }, 5000);
+    }
 
     this.sock.ev.on('connection.update', (update) => {
       const { connection, lastDisconnect, qr } = update;
 
-      if (qr) {
+      if (qr && !pairingNumber) {
         logger.info('WhatsApp authentication required. Please scan the QR code in the logs.');
         qrcode.generate(qr, { small: true });
       }
