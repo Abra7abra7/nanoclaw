@@ -263,12 +263,12 @@ async function runAgent(
   // Wrap onOutput to track session ID from streamed results
   const wrappedOnOutput = onOutput
     ? async (output: ContainerOutput) => {
-        if (output.newSessionId) {
-          sessions[group.folder] = output.newSessionId;
-          setSession(group.folder, output.newSessionId);
-        }
-        await onOutput(output);
+      if (output.newSessionId) {
+        sessions[group.folder] = output.newSessionId;
+        setSession(group.folder, output.newSessionId);
       }
+      await onOutput(output);
+    }
     : undefined;
 
   try {
@@ -425,6 +425,21 @@ async function main(): Promise<void> {
   initDatabase();
   logger.info('Database initialized');
   loadState();
+
+  // Auto-register pairing number if no groups are registered
+  const pairingNumber = process.env.WA_PAIRING_NUMBER;
+  if (pairingNumber && Object.keys(registeredGroups).length === 0) {
+    const jid = `${pairingNumber.replace(/\D/g, '')}@s.whatsapp.net`;
+    logger.info({ jid }, 'Auto-registering pairing number as main chat');
+    registerGroup(jid, {
+      name: 'Main Chat',
+      folder: MAIN_GROUP_FOLDER,
+      trigger: `@${ASSISTANT_NAME}`,
+      added_at: new Date().toISOString(),
+      requiresTrigger: true,
+    });
+    loadState(); // Refresh registeredGroups
+  }
 
   // Graceful shutdown handlers
   const shutdown = async (signal: string) => {
