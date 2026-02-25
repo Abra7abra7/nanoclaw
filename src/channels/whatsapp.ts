@@ -66,7 +66,7 @@ export class WhatsAppChannel implements Channel {
         creds: state.creds,
         keys: makeCacheableSignalKeyStore(state.keys, logger),
       },
-      printQRInTerminal: false,
+      printQRInTerminal: true,
       logger,
       browser: Browsers.macOS('Chrome'),
     });
@@ -75,13 +75,7 @@ export class WhatsAppChannel implements Channel {
       const { connection, lastDisconnect, qr } = update;
 
       if (qr) {
-        const msg =
-          'WhatsApp authentication required. Run /setup in Claude Code.';
-        logger.error(msg);
-        exec(
-          `osascript -e 'display notification "${msg}" with title "NanoClaw" sound name "Basso"'`,
-        );
-        setTimeout(() => process.exit(1), 1000);
+        logger.info('WhatsApp authentication required. Please scan the QR code in the logs.');
       }
 
       if (connection === 'close') {
