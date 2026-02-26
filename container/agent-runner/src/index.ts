@@ -528,18 +528,25 @@ async function main(): Promise<void> {
       execSync('git config user.email "andy@nanoclaw.local"', { cwd: '/workspace/group' });
       execSync('git config user.name "Andy"', { cwd: '/workspace/group' });
     }
+
+    // Some versions of Claude Code look for a package.json
+    if (!fs.existsSync('/workspace/group/package.json')) {
+      log('Diagnostic: Initializing package.json in /workspace/group');
+      fs.writeFileSync('/workspace/group/package.json', JSON.stringify({
+        name: 'nanoclaw-session',
+        version: '1.0.0',
+        private: true
+      }, null, 2));
+    }
   } catch (e) {
-    log(`Diagnostic: Git initialization failed: ${e instanceof Error ? e.message : String(e)}`);
+    log(`Diagnostic: Git/Package initialization failed: ${e instanceof Error ? e.message : String(e)}`);
   }
 
   try {
     const claudeVersion = execSync('claude --version', { encoding: 'utf-8' }).trim();
     log(`Diagnostic: claude version: ${claudeVersion}`);
-    // Optional: run doctor for deep diagnostic
-    // const doctor = execSync('claude doctor', { encoding: 'utf-8' }).trim();
-    // log(`Diagnostic: claude doctor: ${doctor.slice(0, 200)}...`);
   } catch (e) {
-    log('Diagnostic: claude binary check failed');
+    log(`Diagnostic: claude binary check failed: ${e instanceof Error ? e.message : String(e)}`);
   }
 
   // Build SDK env: merge secrets into process.env for the SDK only.
@@ -555,9 +562,26 @@ async function main(): Promise<void> {
     CLAUDE_CODE_SKIP_GIT: '1',         // Redundant flag
     TERM: 'xterm',                     // Terminal type
     FORCE_COLOR: '0',                  // No colors in logs
+    HOME: '/home/node',                // Ensure HOME is consistent
+    USER: 'root',                      // Ensure we are known as root
+    SHELL: '/bin/bash',                // Explicit shell
   };
+
+  // Inject API key into all possible variations
+  const apiKey = containerInput.secrets?.ANTHROPIC_API_KEY;
+  if (apiKey) {
+    sdkEnv.ANTHROPIC_API_KEY = apiKey;
+    sdkEnv.CLAUDE_CODE_API_KEY = apiKey; // Alternate name
+    sdkEnv.ANTHROPIC_KEY = apiKey;       // Just in case
+  } else {
+    log('Warning: No ANTHROPIC_API_KEY provided in secrets');
+  }
+
+  // Inject other secrets
   for (const [key, value] of Object.entries(containerInput.secrets || {})) {
-    sdkEnv[key] = value;
+    if (key !== 'ANTHROPIC_API_KEY') {
+      sdkEnv[key] = value;
+    }
   }
 
   const __dirname = path.dirname(fileURLToPath(import.meta.url));
