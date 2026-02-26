@@ -519,7 +519,13 @@ async function main(): Promise<void> {
   const mcpServerPath = path.join(__dirname, 'ipc-mcp-stdio.js');
 
   let sessionId = containerInput.sessionId;
-  fs.mkdirSync(IPC_INPUT_DIR, { recursive: true });
+  try {
+    fs.mkdirSync(IPC_INPUT_DIR, { recursive: true });
+  } catch (err) {
+    // If it already exists but we can't write/stat it due to permissions,
+    // we'll find out later when we try to use it.
+    log(`Warning: Failed to ensure IPC_INPUT_DIR: ${err instanceof Error ? err.message : String(err)}`);
+  }
 
   // Clean up stale _close sentinel from previous container runs
   try { fs.unlinkSync(IPC_INPUT_CLOSE_SENTINEL); } catch { /* ignore */ }
