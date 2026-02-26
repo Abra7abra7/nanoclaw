@@ -1,5 +1,9 @@
+import { exec as execCb } from 'child_process';
 import fs from 'fs';
 import path from 'path';
+import { promisify } from 'util';
+
+const exec = promisify(execCb);
 
 import {
   ASSISTANT_NAME,
@@ -420,11 +424,34 @@ function ensureContainerSystemRunning(): void {
   cleanupOrphans();
 }
 
+async function ensureAgentImage(): Promise<void> {
+  const imageName = process.env.CONTAINER_IMAGE || 'nanoclaw-agent:latest';
+  try {
+    await exec(`docker image inspect ${imageName}`);
+    logger.info({ imageName }, 'Docker image found');
+  } catch (err) {
+    logger.info({ imageName }, 'Docker image not found, attempting to build it...');
+    try {
+      // Build the agent image using the container directory as context.
+      // The docker CLI will stream the context to the daemon via the socket.
+      await exec(`docker build -t ${imageName} ./container`);
+      logger.info({ imageName }, 'Docker image built successfully');
+    } catch (buildErr) {
+      logger.error({ err: buildErr, imageName }, 'Failed to build Docker image automatically');
+      console.error(`\n!!! CHYBA: Nepodarilo sa zostaviť Docker obraz ${imageName} !!!`);
+      console.error(`Skús ho zostaviť manuálne na serveri príkazom: docker build -t ${imageName} /app/container\n`);
+    }
+  }
+}
+
 async function main(): Promise<void> {
   ensureContainerSystemRunning();
   initDatabase();
   logger.info('Database initialized');
   loadState();
+
+  // Ensure agent image exists before starting loops
+  await ensureAgentImage();
 
   // Auto-register pairing number if no groups are registered
   const pairingNumber = process.env.WA_PAIRING_NUMBER;
