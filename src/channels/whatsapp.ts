@@ -211,13 +211,14 @@ export class WhatsAppChannel implements Channel {
           const senderName = msg.pushName || sender.split('@')[0];
 
           const fromMe = msg.key.fromMe || false;
-          // Detect bot messages: with own number, fromMe is reliable
-          // since only the bot sends from that number.
-          // With shared number, bot messages carry the assistant name prefix
-          // (even in DMs/self-chat) so we check for that.
+          // Detect bot messages:
+          // If the bot has its own number, any message from that number (fromMe) is a bot message.
+          // If the number is shared (ASSISTANT_HAS_OWN_NUMBER = false), BOTH the user and the bot
+          // send messages from the same number (`fromMe` is true for both).
+          // Therefore, on a shared number, we MUST rely strictly on the content prefix to differentiate.
           const isBotMessage = ASSISTANT_HAS_OWN_NUMBER
             ? fromMe
-            : content.startsWith(`${ASSISTANT_NAME}:`);
+            : fromMe && content.startsWith(`${ASSISTANT_NAME}:`);
 
           this.opts.onMessage(chatJid, {
             id: msg.key.id || '',
