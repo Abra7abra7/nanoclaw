@@ -16,6 +16,7 @@
 
 import fs from 'fs';
 import path from 'path';
+import { execSync, spawn } from 'child_process';
 import { query, HookCallback, PreCompactHookInput, PreToolUseHookInput } from '@anthropic-ai/claude-agent-sdk';
 import { fileURLToPath } from 'url';
 
@@ -515,6 +516,14 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
+  // Diagnostic: Check environment and binary versions
+  try {
+    const gitVersion = execSync('git --version', { encoding: 'utf-8' }).trim();
+    log(`Diagnostic: ${gitVersion}`);
+  } catch (e) {
+    log('Diagnostic: git not found or failed');
+  }
+
   // Build SDK env: merge secrets into process.env for the SDK only.
   // Secrets never touch process.env itself, so Bash subprocesses can't see them.
   const sdkEnv: Record<string, string | undefined> = {
@@ -522,6 +531,7 @@ async function main(): Promise<void> {
     CLAUDE_CODE_USE_PANE_LAYOUT: '0', // REQUIRED for headless/non-interactive environments
     CLAUDE_CODE_SKIP_TERMS: '1',     // Skip interactive terms acceptance
     CLAUDE_CODE_DISABLE_STATS: '1',  // Less noise
+    CLAUDE_CODE_IGNORE_GIT: '1',     // Force ignore git if repository is not initialized
     TERM: 'xterm',                   // Basic terminal support
   };
   for (const [key, value] of Object.entries(containerInput.secrets || {})) {
