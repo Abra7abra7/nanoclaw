@@ -30,8 +30,8 @@ RUN apt-get update && apt-get install -y \
 ENV AGENT_BROWSER_EXECUTABLE_PATH=/usr/bin/chromium
 ENV PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium
 
-# Install agent-browser and claude-code globally
-RUN npm install -g agent-browser @anthropic-ai/claude-code
+# Install agent-browser globally
+RUN npm install -g agent-browser
 
 # Create app directory
 WORKDIR /app
@@ -60,9 +60,11 @@ RUN printf "#!/bin/bash\nset -e\ncat > /tmp/input.json\nnode /app/dist/index.js 
 RUN chown -R node:node /workspace && chmod 777 /home/node
 
 # Switch to non-root user (required for --dangerously-skip-permissions)
-# Switch to root user for broad compatibility with volume permissions
-USER root
+# Switch to non-root user (some CLI tools prefer it)
+USER node
 ENV HOME=/home/node
+ENV CLAUDE_CODE_USE_PANE_LAYOUT=0
+ENV CLAUDE_CODE_SKIP_TERMS=1
 
 # Set working directory to group workspace
 WORKDIR /workspace/group
