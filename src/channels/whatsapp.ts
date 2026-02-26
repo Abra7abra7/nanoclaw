@@ -115,8 +115,19 @@ export class WhatsAppChannel implements Channel {
             }, 5000);
           });
         } else {
-          logger.info('Logged out. Run /setup to re-authenticate.');
-          process.exit(0);
+          logger.info('Logged out (401). Clearing auth state and re-authenticating...');
+          try {
+            const authDir = path.join(STORE_DIR, 'auth');
+            fs.rmSync(authDir, { recursive: true, force: true });
+            logger.info('Auth state cleared. Reconnecting in 2s...');
+          } catch (err) {
+            logger.error({ err }, 'Failed to clear auth directory');
+          }
+          setTimeout(() => {
+            this.connectInternal().catch((err2) => {
+              logger.error({ err: err2 }, 'Reconnection retry failed');
+            });
+          }, 2000);
         }
       } else if (connection === 'open') {
         this.connected = true;
