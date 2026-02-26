@@ -556,16 +556,6 @@ async function main(): Promise<void> {
     const gitVersion = execSync('git --version', { encoding: 'utf-8' }).trim();
     log(`Diagnostic: ${gitVersion}`);
 
-    // Ensure working directory is a git repo (Claude Code requirement)
-    // Also mark it as safe (Docker permission requirement for git)
-    execSync('git config --global --add safe.directory /workspace/group');
-    if (!fs.existsSync('/workspace/group/.git')) {
-      log('Diagnostic: Initializing git repository in /workspace/group');
-      execSync('git init', { cwd: '/workspace/group' });
-      execSync('git config user.email "andy@nanoclaw.local"', { cwd: '/workspace/group' });
-      execSync('git config user.name "Andy"', { cwd: '/workspace/group' });
-    }
-
     // Some versions of Claude Code look for a package.json
     if (!fs.existsSync('/workspace/group/package.json')) {
       log('Diagnostic: Initializing package.json in /workspace/group');
@@ -574,6 +564,25 @@ async function main(): Promise<void> {
         version: '1.0.0',
         private: true
       }, null, 2));
+    }
+
+    // Ensure working directory is a git repo (Claude Code requirement)
+    // Also mark it as safe (Docker permission requirement for git)
+    execSync('git config --global --add safe.directory /workspace/group');
+    if (!fs.existsSync('/workspace/group/.git')) {
+      log('Diagnostic: Initializing git repository in /workspace/group');
+      execSync('git init', { cwd: '/workspace/group' });
+      execSync('git config user.email "andy@nanoclaw.local"', { cwd: '/workspace/group' });
+      execSync('git config user.name "Andy"', { cwd: '/workspace/group' });
+
+      // Initial commit (some tools require at least one commit)
+      try {
+        execSync('git add package.json', { cwd: '/workspace/group' });
+        execSync('git commit -m "initial commit"', { cwd: '/workspace/group' });
+        log('Diagnostic: Initial git commit created');
+      } catch (commitErr) {
+        log(`Diagnostic: Initial git commit failed: ${commitErr instanceof Error ? commitErr.message : String(commitErr)}`);
+      }
     }
   } catch (e) {
     log(`Diagnostic: Git/Package initialization failed: ${e instanceof Error ? e.message : String(e)}`);
@@ -584,18 +593,19 @@ async function main(): Promise<void> {
     log(`Diagnostic: claude version: ${claudeVersion}`);
 
     // Test direct CLI execution with real flags
-    log('Diagnostic: Testing direct claude doctor...');
+    log('Diagnostic: Testing direct claude doctor (15s timeout)...');
     try {
       const doctorOutput = execSync('claude doctor', {
         env: sdkEnv,
         cwd: '/workspace/group',
         encoding: 'utf-8',
-        stdio: ['ignore', 'pipe', 'pipe']
+        stdio: ['ignore', 'pipe', 'pipe'],
+        timeout: 15000
       });
       log(`Diagnostic: claude doctor output (first 200 chars): ${doctorOutput.slice(0, 200).replace(/\n/g, ' ')}...`);
     } catch (ce) {
       const err = ce as any;
-      log(`Diagnostic: claude doctor failed: ${err.stderr || err.stdout || err.message}`);
+      log(`Diagnostic: claude doctor failed or timed out: ${err.stderr || err.stdout || err.message}`);
     }
   } catch (e) {
     log(`Diagnostic: claude binary check failed: ${e instanceof Error ? e.message : String(e)}`);
