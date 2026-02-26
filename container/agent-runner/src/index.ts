@@ -533,25 +533,28 @@ async function main(): Promise<void> {
   }
 
   try {
-    const claudePath = execSync('which claude', { encoding: 'utf-8' }).trim();
     const claudeVersion = execSync('claude --version', { encoding: 'utf-8' }).trim();
-    log(`Diagnostic: claude at ${claudePath} (${claudeVersion})`);
+    log(`Diagnostic: claude version: ${claudeVersion}`);
+    // Optional: run doctor for deep diagnostic
+    // const doctor = execSync('claude doctor', { encoding: 'utf-8' }).trim();
+    // log(`Diagnostic: claude doctor: ${doctor.slice(0, 200)}...`);
   } catch (e) {
-    log('Diagnostic: claude binary not found in PATH');
+    log('Diagnostic: claude binary check failed');
   }
 
   // Build SDK env: merge secrets into process.env for the SDK only.
   // Secrets never touch process.env itself, so Bash subprocesses can't see them.
   const sdkEnv: Record<string, string | undefined> = {
     ...process.env,
-    CLAUDE_CODE_USE_PANE_LAYOUT: '0', // REQUIRED for headless/non-interactive environments
-    CLAUDE_CODE_SKIP_TERMS: '1',     // Skip interactive terms acceptance
-    CLAUDE_CODE_DISABLE_STATS: '1',  // Less noise
-    CLAUDE_CODE_IGNORE_GIT: '1',     // Force ignore git if repository is not initialized
-    CLAUDE_CODE_SKIP_GIT: '1',       // Alternate flag for some versions
-    TERM: 'xterm',                   // Basic terminal support
-    // Redundancy for auth
-    CLAUDE_CODE_OAUTH_TOKEN: containerInput.secrets?.ANTHROPIC_API_KEY,
+    CLAUDE_CODE_USE_PANE_LAYOUT: '0',    // Headless mode
+    CLAUDE_CODE_SKIP_TERMS: '1',        // Skip terms
+    CLAUDE_CODE_NON_INTERACTIVE: '1',  // Explicitly non-interactive
+    CLAUDE_CODE_NO_UPDATE: '1',        // Don't check for updates
+    CLAUDE_CODE_DISABLE_STATS: '1',    // Disable telemetry
+    CLAUDE_CODE_IGNORE_GIT: '1',       // Ignore git issues
+    CLAUDE_CODE_SKIP_GIT: '1',         // Redundant flag
+    TERM: 'xterm',                     // Terminal type
+    FORCE_COLOR: '0',                  // No colors in logs
   };
   for (const [key, value] of Object.entries(containerInput.secrets || {})) {
     sdkEnv[key] = value;
