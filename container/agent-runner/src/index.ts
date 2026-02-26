@@ -516,39 +516,6 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  // Diagnostic: Check environment and binary versions
-  try {
-    const gitVersion = execSync('git --version', { encoding: 'utf-8' }).trim();
-    log(`Diagnostic: ${gitVersion}`);
-
-    // Ensure working directory is a git repo (Claude Code requirement)
-    if (!fs.existsSync('/workspace/group/.git')) {
-      log('Diagnostic: Initializing git repository in /workspace/group');
-      execSync('git init', { cwd: '/workspace/group' });
-      execSync('git config user.email "andy@nanoclaw.local"', { cwd: '/workspace/group' });
-      execSync('git config user.name "Andy"', { cwd: '/workspace/group' });
-    }
-
-    // Some versions of Claude Code look for a package.json
-    if (!fs.existsSync('/workspace/group/package.json')) {
-      log('Diagnostic: Initializing package.json in /workspace/group');
-      fs.writeFileSync('/workspace/group/package.json', JSON.stringify({
-        name: 'nanoclaw-session',
-        version: '1.0.0',
-        private: true
-      }, null, 2));
-    }
-  } catch (e) {
-    log(`Diagnostic: Git/Package initialization failed: ${e instanceof Error ? e.message : String(e)}`);
-  }
-
-  try {
-    const claudeVersion = execSync('claude --version', { encoding: 'utf-8' }).trim();
-    log(`Diagnostic: claude version: ${claudeVersion}`);
-  } catch (e) {
-    log(`Diagnostic: claude binary check failed: ${e instanceof Error ? e.message : String(e)}`);
-  }
-
   // Build SDK env: merge secrets into process.env for the SDK only.
   // Secrets never touch process.env itself, so Bash subprocesses can't see them.
   const sdkEnv: Record<string, string | undefined> = {
@@ -582,6 +549,54 @@ async function main(): Promise<void> {
     if (key !== 'ANTHROPIC_API_KEY') {
       sdkEnv[key] = value;
     }
+  }
+
+  // Diagnostic: Check environment and binary versions
+  try {
+    const gitVersion = execSync('git --version', { encoding: 'utf-8' }).trim();
+    log(`Diagnostic: ${gitVersion}`);
+
+    // Ensure working directory is a git repo (Claude Code requirement)
+    if (!fs.existsSync('/workspace/group/.git')) {
+      log('Diagnostic: Initializing git repository in /workspace/group');
+      execSync('git init', { cwd: '/workspace/group' });
+      execSync('git config user.email "andy@nanoclaw.local"', { cwd: '/workspace/group' });
+      execSync('git config user.name "Andy"', { cwd: '/workspace/group' });
+    }
+
+    // Some versions of Claude Code look for a package.json
+    if (!fs.existsSync('/workspace/group/package.json')) {
+      log('Diagnostic: Initializing package.json in /workspace/group');
+      fs.writeFileSync('/workspace/group/package.json', JSON.stringify({
+        name: 'nanoclaw-session',
+        version: '1.0.0',
+        private: true
+      }, null, 2));
+    }
+  } catch (e) {
+    log(`Diagnostic: Git/Package initialization failed: ${e instanceof Error ? e.message : String(e)}`);
+  }
+
+  try {
+    const claudeVersion = execSync('claude --version', { encoding: 'utf-8' }).trim();
+    log(`Diagnostic: claude version: ${claudeVersion}`);
+
+    // Test direct CLI execution to capture raw errors
+    log('Diagnostic: Testing direct claude CLI execution...');
+    try {
+      const testResult = execSync('claude "hi" --non-interactive', {
+        env: sdkEnv,
+        cwd: '/workspace/group',
+        encoding: 'utf-8',
+        stdio: ['ignore', 'pipe', 'pipe']
+      });
+      log(`Diagnostic: direct claude CLI worked: ${testResult.slice(0, 50).replace(/\n/g, ' ')}...`);
+    } catch (ce) {
+      const err = ce as any;
+      log(`Diagnostic: direct claude CLI failed (Code ${err.status}): ${err.stderr || err.message}`);
+    }
+  } catch (e) {
+    log(`Diagnostic: claude binary check failed: ${e instanceof Error ? e.message : String(e)}`);
   }
 
   const __dirname = path.dirname(fileURLToPath(import.meta.url));
