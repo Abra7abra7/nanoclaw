@@ -97,7 +97,10 @@ function registerGroup(jid: string, group: RegisteredGroup): void {
   setRegisteredGroup(jid, group);
 
   // Create group folder
+  fs.mkdirSync(groupDir, { recursive: true });
+  fs.chmodSync(groupDir, 0o777);
   fs.mkdirSync(path.join(groupDir, 'logs'), { recursive: true });
+  fs.chmodSync(path.join(groupDir, 'logs'), 0o777);
 
   logger.info(
     { jid, name: group.name, folder: group.folder },
@@ -452,6 +455,20 @@ async function main(): Promise<void> {
 
   // Ensure agent image exists before starting loops
   await ensureAgentImage();
+
+  // Ensure all existing group folders are writable by the container user
+  for (const group of Object.values(registeredGroups)) {
+    try {
+      const groupDir = resolveGroupFolderPath(group.folder);
+      if (fs.existsSync(groupDir)) {
+        fs.chmodSync(groupDir, 0o777);
+        const logsDir = path.join(groupDir, 'logs');
+        if (fs.existsSync(logsDir)) fs.chmodSync(logsDir, 0o777);
+      }
+    } catch (err) {
+      logger.warn({ err, folder: group.folder }, 'Failed to set permissions on group folder');
+    }
+  }
 
   // Auto-register pairing number if no groups are registered
   const pairingNumber = process.env.WA_PAIRING_NUMBER;
