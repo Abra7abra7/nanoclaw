@@ -59,7 +59,9 @@ RUN printf "#!/bin/bash\nset -e\ncat > /tmp/input.json\nnode /app/dist/index.js 
 RUN chown -R node:node /workspace && chmod 777 /home/node
 
 # Switch to non-root user (required for --dangerously-skip-permissions)
-USER node
+# Switch to root user for broad compatibility with volume permissions
+USER root
+ENV HOME=/home/node
 
 # Set working directory to group workspace
 WORKDIR /workspace/group

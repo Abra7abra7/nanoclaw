@@ -300,7 +300,14 @@ function shouldClose(): boolean {
  */
 function drainIpcInput(): string[] {
   try {
-    fs.mkdirSync(IPC_INPUT_DIR, { recursive: true });
+    try {
+      if (!fs.existsSync(IPC_INPUT_DIR)) {
+        fs.mkdirSync(IPC_INPUT_DIR, { recursive: true });
+      }
+    } catch (err) {
+      // Ignore EACCES/EEXIST, we'll find out on readdir
+    }
+
     const files = fs.readdirSync(IPC_INPUT_DIR)
       .filter(f => f.endsWith('.json'))
       .sort();

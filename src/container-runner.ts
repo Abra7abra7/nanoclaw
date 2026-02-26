@@ -106,6 +106,17 @@ function buildVolumeMounts(
   );
   fs.mkdirSync(groupSessionsDir, { recursive: true });
   fs.chmodSync(groupSessionsDir, 0o777);
+
+  // Pre-create and unlock subdirectories that the SDK or agent needs
+  const subdirs = ['debug', 'skills', 'threads', 'messages'];
+  for (const sub of subdirs) {
+    const subPath = path.join(groupSessionsDir, sub);
+    if (!fs.existsSync(subPath)) {
+      fs.mkdirSync(subPath, { recursive: true });
+    }
+    fs.chmodSync(subPath, 0o777);
+  }
+
   const settingsFile = path.join(groupSessionsDir, 'settings.json');
   if (!fs.existsSync(settingsFile)) {
     fs.writeFileSync(settingsFile, JSON.stringify({
