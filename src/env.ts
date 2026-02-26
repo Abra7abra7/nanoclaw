@@ -9,17 +9,24 @@ import { logger } from './logger.js';
  * so they don't leak to child processes.
  */
 export function readEnvFile(keys: string[]): Record<string, string> {
+  const result: Record<string, string> = {};
+  const wanted = new Set(keys);
+
+  // First, check process.env (standard for environments like Coolify)
+  for (const key of keys) {
+    if (process.env[key]) {
+      result[key] = process.env[key] as string;
+    }
+  }
+
   const envFile = path.join(process.cwd(), '.env');
   let content: string;
   try {
     content = fs.readFileSync(envFile, 'utf-8');
   } catch (err) {
-    logger.debug({ err }, '.env file not found, using defaults');
-    return {};
+    logger.debug({ err }, '.env file not found, using results from process.env');
+    return result;
   }
-
-  const result: Record<string, string> = {};
-  const wanted = new Set(keys);
 
   for (const line of content.split('\n')) {
     const trimmed = line.trim();
@@ -35,7 +42,8 @@ export function readEnvFile(keys: string[]): Record<string, string> {
     ) {
       value = value.slice(1, -1);
     }
-    if (value) result[key] = value;
+    // Only overwrite if not already set by process.env or if process.env was empty
+    if (value && !result[key]) result[key] = value;
   }
 
   return result;
