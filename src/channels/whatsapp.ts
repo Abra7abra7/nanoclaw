@@ -185,6 +185,14 @@ export class WhatsAppChannel implements Channel {
 
         // Translate LID JID to phone JID if applicable
         const chatJid = await this.translateJid(rawJid);
+        const content =
+          msg.message?.conversation ||
+          msg.message?.extendedTextMessage?.text ||
+          msg.message?.imageMessage?.caption ||
+          msg.message?.videoMessage?.caption ||
+          '';
+
+        logger.info({ chatJid, content: content.slice(0, 50), fromMe: msg.key.fromMe }, 'RAW MESSAGE RECEIVED');
 
         const timestamp = new Date(
           Number(msg.messageTimestamp) * 1000,
