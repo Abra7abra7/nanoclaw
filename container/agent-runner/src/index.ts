@@ -587,7 +587,16 @@ async function main(): Promise<void> {
     }
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : String(err);
+    const errorStack = err instanceof Error ? err.stack : 'No stack trace';
     log(`Agent error: ${errorMessage}`);
+    log(`Stack trace: ${errorStack}`);
+
+    // Diagnostic: Check if API key is present (but don't log it!)
+    if (!sdkEnv.ANTHROPIC_API_KEY) {
+      log('Error: ANTHROPIC_API_KEY is missing from environment');
+    } else {
+      log(`Diagnostic: ANTHROPIC_API_KEY is present (length: ${sdkEnv.ANTHROPIC_API_KEY.length})`);
+    }
     writeOutput({
       status: 'error',
       result: null,
