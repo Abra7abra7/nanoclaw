@@ -19,6 +19,7 @@ import {
   setLastGroupSync,
   updateChatName,
 } from '../db.js';
+import { TRIGGER_PATTERN } from '../config.js';
 import { logger } from '../logger.js';
 import { Channel, OnInboundMessage, OnChatMetadata, RegisteredGroup } from '../types.js';
 
@@ -220,12 +221,13 @@ export class WhatsAppChannel implements Channel {
 
           const fromMe = msg.key.fromMe || false;
           // Detect bot messages:
-          // If the bot has its own number, any message from that number (fromMe) is a bot message.
+          // If the bot has its own number, any message from that number (fromMe) is a bot message,
+          // UNLESS it starts with the trigger pattern (allowing owner-triggered commands).
           // If the number is shared (ASSISTANT_HAS_OWN_NUMBER = false), BOTH the user and the bot
           // send messages from the same number (`fromMe` is true for both).
           // Therefore, on a shared number, we MUST rely strictly on the content prefix to differentiate.
           const isBotMessage = ASSISTANT_HAS_OWN_NUMBER
-            ? fromMe
+            ? fromMe && !TRIGGER_PATTERN.test(content.trim())
             : fromMe && content.startsWith(`${ASSISTANT_NAME}:`);
 
           this.opts.onMessage(chatJid, {
