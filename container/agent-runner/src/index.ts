@@ -557,6 +557,8 @@ async function main(): Promise<void> {
     log(`Diagnostic: ${gitVersion}`);
 
     // Ensure working directory is a git repo (Claude Code requirement)
+    // Also mark it as safe (Docker permission requirement for git)
+    execSync('git config --global --add safe.directory /workspace/group');
     if (!fs.existsSync('/workspace/group/.git')) {
       log('Diagnostic: Initializing git repository in /workspace/group');
       execSync('git init', { cwd: '/workspace/group' });
@@ -581,19 +583,19 @@ async function main(): Promise<void> {
     const claudeVersion = execSync('claude --version', { encoding: 'utf-8' }).trim();
     log(`Diagnostic: claude version: ${claudeVersion}`);
 
-    // Test direct CLI execution to capture raw errors
-    log('Diagnostic: Testing direct claude CLI execution...');
+    // Test direct CLI execution with real flags
+    log('Diagnostic: Testing direct claude doctor...');
     try {
-      const testResult = execSync('claude "hi" --non-interactive', {
+      const doctorOutput = execSync('claude doctor', {
         env: sdkEnv,
         cwd: '/workspace/group',
         encoding: 'utf-8',
         stdio: ['ignore', 'pipe', 'pipe']
       });
-      log(`Diagnostic: direct claude CLI worked: ${testResult.slice(0, 50).replace(/\n/g, ' ')}...`);
+      log(`Diagnostic: claude doctor output (first 200 chars): ${doctorOutput.slice(0, 200).replace(/\n/g, ' ')}...`);
     } catch (ce) {
       const err = ce as any;
-      log(`Diagnostic: direct claude CLI failed (Code ${err.status}): ${err.stderr || err.message}`);
+      log(`Diagnostic: claude doctor failed: ${err.stderr || err.stdout || err.message}`);
     }
   } catch (e) {
     log(`Diagnostic: claude binary check failed: ${e instanceof Error ? e.message : String(e)}`);
