@@ -520,8 +520,24 @@ async function main(): Promise<void> {
   try {
     const gitVersion = execSync('git --version', { encoding: 'utf-8' }).trim();
     log(`Diagnostic: ${gitVersion}`);
+
+    // Ensure working directory is a git repo (Claude Code requirement)
+    if (!fs.existsSync('/workspace/group/.git')) {
+      log('Diagnostic: Initializing git repository in /workspace/group');
+      execSync('git init', { cwd: '/workspace/group' });
+      execSync('git config user.email "andy@nanoclaw.local"', { cwd: '/workspace/group' });
+      execSync('git config user.name "Andy"', { cwd: '/workspace/group' });
+    }
   } catch (e) {
-    log('Diagnostic: git not found or failed');
+    log(`Diagnostic: Git initialization failed: ${e instanceof Error ? e.message : String(e)}`);
+  }
+
+  try {
+    const claudePath = execSync('which claude', { encoding: 'utf-8' }).trim();
+    const claudeVersion = execSync('claude --version', { encoding: 'utf-8' }).trim();
+    log(`Diagnostic: claude at ${claudePath} (${claudeVersion})`);
+  } catch (e) {
+    log('Diagnostic: claude binary not found in PATH');
   }
 
   // Build SDK env: merge secrets into process.env for the SDK only.
@@ -532,7 +548,10 @@ async function main(): Promise<void> {
     CLAUDE_CODE_SKIP_TERMS: '1',     // Skip interactive terms acceptance
     CLAUDE_CODE_DISABLE_STATS: '1',  // Less noise
     CLAUDE_CODE_IGNORE_GIT: '1',     // Force ignore git if repository is not initialized
+    CLAUDE_CODE_SKIP_GIT: '1',       // Alternate flag for some versions
     TERM: 'xterm',                   // Basic terminal support
+    // Redundancy for auth
+    CLAUDE_CODE_OAUTH_TOKEN: containerInput.secrets?.ANTHROPIC_API_KEY,
   };
   for (const [key, value] of Object.entries(containerInput.secrets || {})) {
     sdkEnv[key] = value;
