@@ -528,14 +528,6 @@ async function main(): Promise<void> {
     sdkEnv[key] = value;
   }
 
-  // Diagnostic: Log a redacted version of the API key to verify it's correctly passed
-  if (sdkEnv.ANTHROPIC_API_KEY) {
-    const key = sdkEnv.ANTHROPIC_API_KEY;
-    log(`Diagnostic: ANTHROPIC_API_KEY = ${key.slice(0, 10)}...${key.slice(-5)} (length: ${key.length})`);
-  } else {
-    log('Warning: ANTHROPIC_API_KEY is not set in sdkEnv');
-  }
-
   const __dirname = path.dirname(fileURLToPath(import.meta.url));
   const mcpServerPath = path.join(__dirname, 'ipc-mcp-stdio.js');
 

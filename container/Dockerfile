@@ -60,8 +60,8 @@ RUN printf "#!/bin/bash\nset -e\ncat > /tmp/input.json\nnode /app/dist/index.js 
 RUN chown -R node:node /workspace && chmod 777 /home/node
 
 # Switch to non-root user (required for --dangerously-skip-permissions)
-# Switch to non-root user (some CLI tools prefer it)
-USER node
+# Switch to root user for broad compatibility with volume permissions
+USER root
 ENV HOME=/home/node
 ENV CLAUDE_CODE_USE_PANE_LAYOUT=0
 ENV CLAUDE_CODE_SKIP_TERMS=1
